@@ -1,1 +1,6 @@
 env/
+CRAFT-pytorch/
+craft_mlt_25k.pth
+working_folders
+Real-ESRGAN
+__pycache__/
