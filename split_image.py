@@ -5,7 +5,7 @@ import os
 dir_num = 0
 count = 0
 
-def detect_bubble_shapes(image_path, output_dir='working_folders/bubbles'):
+def detect_bubble_shapes(image_path, output_dir):
     global count
     os.makedirs(output_dir, exist_ok=True)
 
@@ -57,7 +57,7 @@ def _split_on_black_panel(image_path):
 
     return parts
 
-def _detect_and_split_manhwa(image, output_dir='working_folders/output_slices', min_gap=50, white_threshold=0.99, prefix='slice', start_index=1):
+def _detect_and_split_manhwa(image, output_dir='working_folders/output_slices', min_gap=250, white_threshold=0.99, prefix='slice', start_index=1):
     if isinstance(image, str):  # Allow image path
         color_img = cv2.imread(image)
     else:
@@ -92,7 +92,7 @@ def _detect_and_split_manhwa(image, output_dir='working_folders/output_slices', 
         if white_ratio >= white_threshold:
             continue
         output_path = os.path.join(output_dir, f'{prefix}_{start_index + count:03}.png')
-        cv2.imwrite(output_path, cv2.cvtColor(slice_img, cv2.COLOR_BGR2GRAY))
+        cv2.imwrite(output_path, slice_img)
         count += 1
 
     return count
