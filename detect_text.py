@@ -15,7 +15,7 @@ import craft_utils
 import imgproc
 
 from craft import CRAFT
-import file_utils
+import pytesseract
 
 from collections import OrderedDict
 def copyStateDict(state_dict):
@@ -79,6 +79,8 @@ def test_net(net, image, text_threshold, link_threshold, low_text, cuda, poly, r
 
     return boxes, polys, ret_score_text
 
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+langs = "kor+eng+ind"
 
 net = CRAFT()
 
@@ -135,5 +137,57 @@ def filter_image(path: str):
 
         print()
 
-    # for i, img in enumerate(cropped_imgs):
-    #     cv2.imwrite(f"results/crop_{i}.png", img)
+
+def cvt2Scale(path: str):
+    for sub_dir in os.listdir(path):
+        for in_sub in os.listdir(os.path.join(path, sub_dir)):
+            os.makedirs(os.path.join("working_folders/2_Scale", sub_dir, in_sub), exist_ok=True)
+
+            for img in os.listdir(os.path.join(path, sub_dir, in_sub)):
+                des_path = os.path.join(path, sub_dir, in_sub, img)
+                image = cv2.imread(os.path.join(path, sub_dir, in_sub, img))
+                gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                _, bw = cv2.threshold(gray_image, 40, 255, cv2.THRESH_BINARY)
+
+                print("converting image from:", des_path)
+                cv2.imwrite(os.path.join("working_folders/2_Scale", sub_dir, in_sub, img), bw)
+
+
+def extract_text(path: str):
+    res_path = "result.txt"
+
+    count = 0
+    succ_count = 0
+
+    if os.path.exists(res_path):
+        os.remove(res_path)
+
+    with open(res_path, "a", encoding="utf-8") as file:
+        for sub_dir in os.listdir(path):
+            print(f"\nsub_dir: {sub_dir}")
+
+            for in_sub in os.listdir(os.path.join(path, sub_dir)):
+                print(f"\nin_sub: {in_sub}")
+
+                for img in os.listdir(os.path.join(path, sub_dir, in_sub)):
+                    image = cv2.imread(os.path.join(path, sub_dir, in_sub, img))
+
+                    text = pytesseract.image_to_string(image, lang=langs, config=r'--oem 3 --psm 7')
+                    text = text.replace("\n", '')
+
+                    print(f"{img}: ", end='')
+                    print(text)
+
+                    file.write(text + "\n")
+
+                    if len(text) != 0:
+                        succ_count += 1
+                    count += 1
+
+            file.write("\n")
+            print("-" * 50)
+
+    if count > 0:
+        print(f"Result: {succ_count}/{count} can read all image {succ_count * 100 / count :.2f}% in this comic")
+    else:
+        print("Error folder is empty !!!")

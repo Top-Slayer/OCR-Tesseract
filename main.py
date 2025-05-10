@@ -1,115 +1,165 @@
-import pytesseract
 import split_image as si
-import os
-import cv2
+import os, sys
 import subprocess
+import threading
 import shutil
 import detect_text as dt
+import customtkinter as ctk
 
-# langs = "kor+chi_sim+chi_sim_vert+chi_tra+eng+ind+jpn+jpn_vert"
-langs = "kor+eng+ind"
 path = "test_pages"
 pages = os.listdir(path)
+dt.langs = 'eng'
 
-
-def check_dir(*path: str):
+def _check_dir(*path: str):
     for _, e in enumerate(path):
         if not os.path.exists(e):
             os.makedirs(e, exist_ok=True)
 
+def process(path: str, langs=""):
+    if langs == "" and len(langs) == 0:
+        print("Using default language: ", dt.langs)
+    else:
+        dt.langs = langs
+        print("Using custom language: ", dt.langs)
 
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+    # Clear all files and recreate
+    if os.path.exists("working_folders"):
+        shutil.rmtree("working_folders")
+    _check_dir(
+        "working_folders/output_slices", 
+        "working_folders/2_Scale", 
+        "working_folders/enchanced_images",
+        "working_folders/cropped_imgs"
+    )
 
-# Clear all files and recreate
-if os.path.exists("working_folders"):
-    shutil.rmtree("working_folders")
-check_dir(
-    "working_folders/output_slices", 
-    "working_folders/bubbles", 
-    "working_folders/enchanced_images",
-    "working_folders/cropped_imgs"
-)
+    # Split scene
+    print("[ Slice Part ]")
+    for page_file in pages:
+        img = os.path.join(path, page_file)
+        si.process_manhwa(img)
 
-# Split scene
-print("[ Slice Parts ]")
-for page_file in pages:
-    img = os.path.join(path, page_file)
-    si.process_manhwa(img)
+    path = "working_folders/output_slices"
 
+    # Filter get only image have text in scene
+    print("\n[ Filter Crop Text Part ]")
+    dt.filter_image(path)
 
-path = "working_folders/output_slices"
+    # Enchanced image
+    print("\n[ Enchanced image Part ]")
+    path = "working_folders/cropped_imgs"
+    des_path = "working_folders/enchanced_images"
 
-# Filter get only image have text in scene
-print("\n[ Filter Crop Text Parts ]")
-dt.filter_image(path)
+    for sub_dir in os.listdir(path):
+        for in_sub in os.listdir(os.path.join(path, sub_dir)):
+            os.makedirs(os.path.join(des_path, sub_dir, in_sub), exist_ok=True)
+            proc = subprocess.run([
+                    "Real-ESRGAN/realesrgan-ncnn-vulkan.exe",
+                    "-i", os.path.join(path, sub_dir, in_sub),
+                    "-o", os.path.join(des_path, sub_dir, in_sub),
+                    "-n", "realesrgan-x4plus",
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True
+            )
 
+            for line in proc.stdout:
+                sys.stdout.write(line)
+                sys.stdout.flush()
 
-# Crop bubble text
-# print("\n[ Crop Bubble Text Parts ]")
-# des_path = "working_folders/bubbles"
+    # Convert image RGB to 2-Scale image
+    print("\n[ Convert RGP to 2-Scale Part ]")
+    dt.cvt2Scale("working_folders/enchanced_images")
 
-# for sub_dir in os.listdir(path):
-#     for file in os.listdir(os.path.join(path, sub_dir)):
-#         si.detect_bubble_shapes(os.path.join(path, sub_dir, file), os.path.join(des_path, sub_dir))
-
-
-# Filter get only image have bubble text
-# print("\n[ Filter bubble text Parts ]")
-# dt.filter_image("working_folders/bubbles")
-
-
-# Convert image RGB to Gray scale
-# for sub_dir in os.listdir(path):
-#     sub_dir = os.path.join(path, sub_dir)
-#     for path_img in os.listdir(sub_dir):
-#         img = cv2.imread(os.path.join(sub_dir, path_img))
-#         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-#         cv2.imwrite(os.path.join(sub_dir, path_img), gray)
-
-
-# Enchanced image
-path = "working_folders/cropped_imgs"
-des_path = "working_folders/enchanced_images"
-
-for sub_dir in os.listdir(path):
-    for in_sub in os.listdir(os.path.join(path, sub_dir)):
-        os.makedirs(os.path.join(des_path, sub_dir, in_sub), exist_ok=True)
-        subprocess.run([
-            "Real-ESRGAN/realesrgan-ncnn-vulkan.exe",
-            "-i", os.path.join(path, sub_dir, in_sub),
-            "-o", os.path.join(des_path, sub_dir, in_sub),
-            "-n", "realesrgan-x4plus",
-        ])
+    # Get text from enchanced image
+    print("\n[ Get Text From Image Part ]")
+    dt.extract_text("working_folders/2_Scale")
 
 
-# Get text from enchanced image
-count = 0
-succ_count = 0
+class RedirectText:
+    def __init__(self, text_widget):
+        self.text_widget = text_widget
 
-langs = "kor+eng+ind"
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+    def write(self, string):
+        self.text_widget.insert("end", string)
+        self.text_widget.see("end")  # auto-scroll
 
-for sub_dir in os.listdir(path):
-    print(f"\nsub_dir: {sub_dir}")
+    def flush(self):
+        pass  # needed for compatibility
 
-    for in_sub in os.listdir(os.path.join(path, sub_dir)):
-        print(f"\nin_sub: {in_sub}")
-        in_sub = os.path.join(path, sub_dir, in_sub)
 
-        for img in os.listdir(in_sub):
-            image = cv2.imread(os.path.join(in_sub, img))
-            # gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+button_status = {
+    "Korean": {"active": False, "symbol": "kor"},
+    "Japan": {"active": False, "symbol": "jpn+jpn_vert"},
+    "English": {"active": False, "symbol": "eng"},
+    "Indonesia": {"active": False, "symbol": "ind"},
+    "China": {"active": False, "symbol": "chi_sim+chi_sim_vert+chi_tra"}
+}
 
-            text = pytesseract.image_to_string(image, lang=langs, config="r'--oem 3 --psm 7'")
-            text = text.replace("\n", '')
+button_lists = list(button_status.keys())
 
-            print(f"{img}: ", end='')
-            print(text)
+def toggle_status(idx, button_id):
+    button_status[button_id]["active"] = not button_status[button_id]["active"]
+    new_text = f"{button_lists[idx]}: ON" if button_status[button_id]["active"] else f"{button_lists[idx]}: OFF"
+    buttons[button_id].configure(text=new_text)
 
-            if len(text) != 0:
-                succ_count += 1
-            count += 1
 
-    print("-" * 50)
+ctk.set_appearance_mode("Dark")       # Options: "System", "Dark", "Light"
+ctk.set_default_color_theme("blue")   # Options: "blue", "green", "dark-blue"
 
-print(f"Result: {succ_count}/{count} can read {succ_count * 100 / count :.2f}% in this comic")
+app = ctk.CTk()  
+app.geometry("700x500")
+app.title("Optical Character Recognition")
+
+label = ctk.CTkLabel(app, text="Burh OCR Program", font=("Arial", 25))
+label.pack(pady=20)
+
+label = ctk.CTkLabel(app, text="[ Warning ]: if use all languages it will take time")
+label.pack()
+
+label = ctk.CTkLabel(app, text="Select language: ")
+label.pack()
+
+button_frame = ctk.CTkFrame(app)
+button_frame.pack(pady=20, padx=20)
+
+buttons = {}
+columns = 3  # number of columns in the grid
+
+for idx, button_id in enumerate(button_status):
+    row = idx // columns
+    col = idx % columns
+    buttons[button_id] = ctk.CTkButton(
+        button_frame,
+        text=f"{button_lists[idx]}: OFF",
+        command=lambda button_id=button_id, idx=idx: toggle_status(idx, button_id)
+    )
+    buttons[button_id].grid(row=row, column=col, padx=10, pady=10)
+
+
+def list_used_lang():
+    res = ""
+    for idx, button_id in enumerate(button_status):
+        if button_status[button_id]["active"]:
+            if idx != 0:
+                res += "+" + str(button_status[button_id]["symbol"])
+            else:
+                res += str(button_status[button_id]["symbol"])
+    return res
+
+def threaded_process():
+    threading.Thread(target=process, args=(path, list_used_lang()), daemon=True).start()
+
+
+label = ctk.CTkLabel(app, text="Don't forget put images into [ pages ] folder")
+label.pack()
+
+button = ctk.CTkButton(app, text="Start", command=threaded_process)
+button.pack()
+
+output_box = ctk.CTkTextbox(app, width=680, height=200, font=("Arial", 10))
+output_box.pack(pady=20, padx=20, fill="both", expand=True)
+sys.stdout = RedirectText(output_box)
+
+# Run app
+app.mainloop()
