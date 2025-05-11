@@ -133,7 +133,8 @@ def filter_image(path: str):
                 print(" >> [ Write ]")
                 os.makedirs(des_path , exist_ok=True)
                 for i, img in enumerate(_crop_polygons(image, polys)):
-                    cv2.imwrite(f"{des_path}/crop_{i}.png", img)
+                    if img is not None:
+                        cv2.imwrite(f"{des_path}/crop_{i}.png", img)
 
         print()
 
@@ -147,7 +148,7 @@ def cvt2Scale(path: str):
                 des_path = os.path.join(path, sub_dir, in_sub, img)
                 image = cv2.imread(os.path.join(path, sub_dir, in_sub, img))
                 gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-                _, bw = cv2.threshold(gray_image, 40, 255, cv2.THRESH_BINARY)
+                _, bw = cv2.threshold(gray_image, 25, 255, cv2.THRESH_BINARY)
 
                 print("converting image from:", des_path)
                 cv2.imwrite(os.path.join("working_folders/2_Scale", sub_dir, in_sub, img), bw)
@@ -165,6 +166,7 @@ def extract_text(path: str):
     with open(res_path, "a", encoding="utf-8") as file:
         for sub_dir in os.listdir(path):
             print(f"\nsub_dir: {sub_dir}")
+            file.write(sub_dir + ":\n")
 
             for in_sub in os.listdir(os.path.join(path, sub_dir)):
                 print(f"\nin_sub: {in_sub}")
@@ -184,7 +186,7 @@ def extract_text(path: str):
                         succ_count += 1
                     count += 1
 
-            file.write("\n")
+            file.write("\n\n")
             print("-" * 50)
 
     if count > 0:

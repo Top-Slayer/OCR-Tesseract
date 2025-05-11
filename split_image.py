@@ -2,7 +2,6 @@ import cv2
 import numpy as np
 import os
 
-dir_num = 0
 count = 0
 
 def detect_bubble_shapes(image_path, output_dir):
@@ -97,9 +96,9 @@ def _detect_and_split_manhwa(image, output_dir='working_folders/output_slices', 
 
     return count
 
-def process_manhwa(image_path, output_dir='working_folders/output_slices'):
-    global dir_num
-    sub_dir = f"{output_dir}/subdir_{dir_num}"
+def process_manhwa(image_path, name, output_dir='working_folders/output_slices'):
+    text, _ = os.path.splitext(name)
+    sub_dir = f"{output_dir}/{text}"
     panels = _split_on_black_panel(image_path)
     total = 0
 
@@ -111,5 +110,3 @@ def process_manhwa(image_path, output_dir='working_folders/output_slices'):
         total += count
 
     print(f"Saved {total} slices to '{sub_dir}' from {image_path} (blank filtered).")
-
-    dir_num += 1

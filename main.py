@@ -40,7 +40,7 @@ def process(path: str, langs=""):
     print("[ Slice Part ]")
     for page_file in pages:
         img = os.path.join(path, page_file)
-        si.process_manhwa(img)
+        si.process_manhwa(img, page_file)
 
     path = "working_folders/output_slices"
 
