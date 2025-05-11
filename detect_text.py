@@ -188,6 +188,6 @@ def extract_text(path: str):
             print("-" * 50)
 
     if count > 0:
-        print(f"Result: {succ_count}/{count} can read all image {succ_count * 100 / count :.2f}% in this comic")
+        print(f"Result: {succ_count}/{count} can read text {succ_count * 100 / count :.2f}% in this comic")
     else:
         print("Error folder is empty !!!")
