@@ -6,6 +6,9 @@ import shutil
 import detect_text as dt
 import customtkinter as ctk
 
+# preprocess installing dependencirs
+subprocess.run("setup.cmd")
+
 path = "test_pages"
 pages = os.listdir(path)
 dt.langs = 'eng'
