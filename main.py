@@ -1,3 +1,4 @@
+import patch_file
 import split_image as si
 import os, sys
 import subprocess
@@ -6,7 +7,7 @@ import shutil
 import detect_text as dt
 import customtkinter as ctk
 
-path = "test_pages"
+path = "pages"
 os.makedirs(path, exist_ok=True)
 
 pages = os.listdir(path)
@@ -16,6 +17,7 @@ def _check_dir(*path: str):
     for _, e in enumerate(path):
         if not os.path.exists(e):
             os.makedirs(e, exist_ok=True)
+
 
 def process(path: str, langs=""):
     if langs == "" and len(langs) == 0:
