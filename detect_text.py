@@ -180,7 +180,7 @@ def extract_text(path: str):
                     print(f"{img}: ", end='')
                     print(text)
 
-                    file.write(text + "\n")
+                    file.write("- " + text + "\n")
 
                     if len(text) != 0:
                         succ_count += 1
