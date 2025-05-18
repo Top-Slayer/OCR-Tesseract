@@ -95,5 +95,3 @@ if %ERRORLEVEL% equ 0 (
 )
 
 echo [ Install dependecies successfully ]
-
-timeout /t 3
